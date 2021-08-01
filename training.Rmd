@@ -1,5 +1,5 @@
 ---
-title: "Training WRM Data"
+title: "Training WRM Tutorial"
 output: html_notebook
 ---
 
@@ -7,8 +7,8 @@ output: html_notebook
 ```{r}
 library(wrmbn)
 
-data <- read.csv("data/bosolieu2.csv")
-structure <- read.csv("data/structure.csv")
+data("data")
+data("structure")
 
 uncorelate_node <- c("MTL", "QMX", "HCL", "CMB", "CTL", "CDX", "CBT")
 for(node in uncorelate_node) {
@@ -94,7 +94,7 @@ dput(trained_models, "traind_models.R")
 ## Loading missing data
 ```{r}
 library(wrmbn)
-data <- read.csv("data/bosolieu2.csv")
+data(data)
 continuous_variables <- preprocessed$continuous_variables
 discrete_variables <- preprocessed$discrete_variables
 desire_layers <- preprocessed$desire_layers

@@ -67,7 +67,7 @@ preprocess_test_data <- function(data, continuous_variables, discrete_variables,
   }
   data_constructed <- reconstruct_timeseries_data(data, desire_layers, FALSE)
   data_constructed <- data_constructed[, c(continuous_variables, discrete_variables)]
-  data_constructed <- convert_data_type(data_constructed, continuous_variable_names, discrete_variable_names)
+  data_constructed <- convert_data_type(data_constructed, continuous_variables, discrete_variables)
 
   if(!is.null(normalize_type) & !is.null(normalizers)) {
     data_constructed <- normalize_data(data_constructed, normalize_type, normalizers)$data
@@ -320,15 +320,20 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
 
   #Impute missing data
   impute_data <- bnlearn::impute(fitted, processed_data)
-
+  print(impute_data)
   #Re-scale data to actual
   impute_data <- reverse_normalized_data(impute_data, normalize_type, normalizers)
 
   #Reverse constructed data
   impute_data <- reverse_constructed_data(impute_data, desire_layers)
   all_names <- colnames(impute_data)
-  impute_data <- cbind(time_values, impute_data)
-  colnames(impute_data) <- c(time_column, all_names)
+
+  if(!is.null(time_column)) {
+    impute_data <- impute_data[1:length(time_values), ]
+    impute_data <- cbind(time_values, impute_data)
+    colnames(impute_data) <- c(time_column, all_names)
+  }
+
 
   if(debug) {
     cat("Impute missing for data with dim", dim(data), "completed")
@@ -336,5 +341,7 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
 
   return(impute_data)
 }
+
+
 
 
