@@ -61,14 +61,17 @@ bl_wl <- wrmbn::get_continuous_structure_filter(continuous_data, desire_layers, 
 ```{r}
 library(wrmbn)
 data <- preprocessed$data
-#algorithms <- c("hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
+#algorithms <- c("gs", "hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
 algorithms <- c("hc", "tabu")
 target <- "MBT_3"
 wl <- bl_wl$whitelist
 bl <- bl_wl$blacklist
 
 result <- wrmbn::cross_validation_learning_algorithms(data, algorithms, wl, bl, target, n_cluster = 4, debug = TRUE)
+#boxplot(result$gs, result$hc, result$tabu, result$iamb, result$inter.iamb, result$fast.iamb, names = algorithms)
 boxplot(result$hc, result$tabu, names = algorithms)
+
+dput(result, "result.R")
 ```
 
 
@@ -81,15 +84,16 @@ number_layers <- preprocessed$desire_layers
 bl <- bl_wl$blacklist
 wl <- bl_wl$whitelist
 n_cluster <- 4
-algorithms <- c("gs")
-
+#algorithms <- c("gs", "hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
+algorithms <- c("hc", "tabu")
 trained_models <- wrmbn::training_model(training_type, data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap = 500, debug = FALSE)
 
+dput(trained_models, "traind_models.R")
 ```
 
 ## Loading missing data
 ```{r}
-
+library(wrmbn)
 data <- read.csv("data/bosolieu2.csv")
 continuous_variables <- preprocessed$continuous_variables
 discrete_variables <- preprocessed$discrete_variables
@@ -101,8 +105,6 @@ fitted <- trained_models$hc$fitted
 
 imputed_data <- impute_missing_data(fitted, data, continuous_variables, discrete_variables,
                                 time_column = "date", normalize_type, normalizers, debug = FALSE)
-
-
 ```
 
 
