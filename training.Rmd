@@ -1,0 +1,112 @@
+---
+title: "Training WRM Data"
+output: html_notebook
+---
+
+## Preprocess data
+```{r}
+library(wrmbn)
+
+data <- read.csv("data/bosolieu2.csv")
+structure <- read.csv("data/structure.csv")
+
+uncorelate_node <- c("MTL", "QMX", "HCL", "CMB", "CTL", "CDX", "CBT")
+for(node in uncorelate_node) {
+  data <- data[, -which(colnames(data) == node)]
+}
+
+for(node in uncorelate_node) {
+  if(length(which(structure$from == node)) > 0) {
+    structure <- structure[-which(structure$from == node), ]
+  } else if(length(which(structure$to == node)) > 0) {
+    structure <- structure[-which(structure$to == node), ]
+  }
+}
+
+type <- "continuous"
+time_column <- "date"
+continuous_variable_names <- setdiff(colnames(data), time_column)
+discrete_variable_names <- c()
+desire_layers <- 3
+normalize_type <- "mean_normalization"
+preprocessed <- preprocess_timeseries_data(data, type, time_column,
+                                       continuous_variable_names, discrete_variable_names, desire_layers,
+                                       normalize_type, quantile_number = -1)
+```
+## Structure Filtering
+```{r}
+library(wrmbn)
+
+continuous_data <- preprocessed$data
+desire_layers <- preprocessed$desire_layers
+quantile_number <- preprocessed$quantile_number
+continuous_variables <- preprocessed$continuous_variables
+discrete_variables <- preprocessed$discrete_variables
+known_structure <- structure
+is_variable_only <- TRUE
+corr_threshold <- 0
+is_blacklist_internal <- TRUE
+is_blacklist_other <- TRUE
+custom_blacklist <- NULL
+custom_whitelist <- NULL
+
+bl_wl <- wrmbn::get_continuous_structure_filter(continuous_data, desire_layers, quantile_number,
+                                            continuous_variables, discrete_variables,
+                                            known_structure, corr_threshold, is_blacklist_internal,
+                                            is_variable_only, is_blacklist_other,
+                                            custom_blacklist, custom_whitelist)
+```
+
+## Select alogrithms to learning
+```{r}
+library(wrmbn)
+data <- preprocessed$data
+#algorithms <- c("hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
+algorithms <- c("hc", "tabu")
+target <- "MBT_3"
+wl <- bl_wl$whitelist
+bl <- bl_wl$blacklist
+
+result <- wrmbn::cross_validation_learning_algorithms(data, algorithms, wl, bl, target, n_cluster = 4, debug = TRUE)
+boxplot(result$hc, result$tabu, names = algorithms)
+```
+
+
+## Learning Model
+```{r}
+library(wrmbn)
+training_type <- preprocessed$type
+data <- preprocessed$data
+number_layers <- preprocessed$desire_layers
+bl <- bl_wl$blacklist
+wl <- bl_wl$whitelist
+n_cluster <- 4
+algorithms <- c("gs")
+
+trained_models <- wrmbn::training_model(training_type, data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap = 500, debug = FALSE)
+
+```
+
+## Loading missing data
+```{r}
+
+data <- read.csv("data/bosolieu2.csv")
+continuous_variables <- preprocessed$continuous_variables
+discrete_variables <- preprocessed$discrete_variables
+desire_layers <- preprocessed$desire_layers
+time_column <- "date"
+normalize_type <- preprocessed$normalize_tye
+normalizers <- preprocessed$normalizers
+fitted <- trained_models$hc$fitted
+
+imputed_data <- impute_missing_data(fitted, data, continuous_variables, discrete_variables,
+                                time_column = "date", normalize_type, normalizers, debug = FALSE)
+
+
+```
+
+
+
+
+
+
