@@ -66,6 +66,7 @@ reconstruct_timeseries_data <- function(data, number_layers, na_omit = TRUE) {
 
   f <- new_cols
 
+  print(data)
   if(nrow(data) <= number_layers) {
     row <- c()
     for(i in 1:nrow(data)) {
@@ -75,6 +76,7 @@ reconstruct_timeseries_data <- function(data, number_layers, na_omit = TRUE) {
       row <- c(row, as.character(data[i, ]))
     }
     row <- c(row, rep(NA, length(f) - length(row)))
+
     f <- rbind(f, row)
   } else {
     for(i in 1:(length(data[, 1]) - number_layers + 1)) {
@@ -95,7 +97,12 @@ reconstruct_timeseries_data <- function(data, number_layers, na_omit = TRUE) {
   f <- as.data.frame(f)
   f <- f[-1, ]
   colnames(f) <- new_cols
-  f <- f[, sort(new_cols)]
+
+  sorted_cols <- c()
+  for(col in cols) {
+    sorted_cols <- c(sorted_cols, paste(col, 1:number_layers, sep = "_"))
+  }
+  f <- f[, sorted_cols]
   return(f)
 }
 

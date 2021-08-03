@@ -312,7 +312,7 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
   }
 
   #Reconstruct and normalize data (if need)
-  test_data <- wrmbn::preprocess_test_data(data, continuous_variables, discrete_variables, desire_layers,
+  test_data <- preprocess_test_data(data, continuous_variables, discrete_variables, desire_layers,
                                            time_column, normalize_type, normalizers)
 
   time_values <- test_data$time_values
@@ -340,6 +340,94 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
   }
 
   return(impute_data)
+}
+
+predict_data <- function(fitted, predictor_data, predicted_nodes, number_layers,
+                         continuous_variables, discrete_variables,
+                         time_column = NULL, time_format = "%m/%d/%y", normalizers = NULL, normalize_type = NULL,
+                         method = "lw", debug = FALSE) {
+  if(debug) {
+    cat("Predict for nodes", predicted_nodes, "\n")
+  }
+  predictor_data <- predictor_data[, c(time_column, continuous_variables, discrete_variables)]
+
+  #Bind predicted values
+  for(node in predicted_nodes) {
+    predictor_data <- cbind(predictor_data, rep(NA, nrow(predictor_data)))
+  }
+
+  colnames(predictor_data) <- c(time_column, continuous_variables, discrete_variables, predicted_nodes)
+
+  predictor_data_without_time <- predictor_data
+  time_values <- NULL
+  if(!is.null(time_column)) {
+    time_values <- as.Date(predictor_data[, time_column], time_format)
+    predictor_data_without_time <- predictor_data[, -which(colnames(predictor_data) == time_column)]
+  }
+
+  continuous_variable_names <- generate_variables(continuous_variables, number_layers)
+  data_constructed <- reconstruct_timeseries_data(predictor_data_without_time, number_layers, FALSE)
+  data_constructed <- convert_data_type(data_constructed, c(continuous_variables, predicted_nodes), c())
+  if(!is.null(normalize_type) & !is.null(normalizers)) {
+    data_constructed <- normalize_data(data_constructed, normalize_type, normalizers)$data
+  }
+
+  #Predict values
+  for(i in seq(nrow(data_constructed))) {
+    while(TRUE) {
+      predictor <- data_constructed[i, ]
+      na_columns <- c()
+      for(col in colnames(predictor)) {
+        if(sum(is.na(predictor[, col])) > 0) {
+          na_columns <- c(na_columns, col)
+        }
+      }
+      evidence_columns <- setdiff(colnames(predictor), na_columns)
+      if(length(na_columns) == 0) {
+        break
+      }
+
+      predict_node <- na_columns[1]
+      predictor_node <- data_constructed[, evidence_columns]
+      if(debug) {
+        cat("Predict for node", predict_node, "with predictors", evidence_columns, "\n")
+      }
+      dist <- bnlearn::cpdist(fitted, nodes = predict_node,
+                              evidence = as.list(predictor_node), method = method)
+      predicted_value = mean(dist[, predict_node])
+      data_constructed[i, predict_node] <- predicted_value
+
+      if(debug) {
+        cat("Predict for node", predict_node, "with predictors", evidence_columns, "completed with value", predicted_value, "\n")
+      }
+    }
+
+  }
+
+  data_constructed <- reverse_normalized_data(data_constructed, normalize_type, normalizers)
+  data_constructed <- reverse_constructed_data(data_constructed, number_layers)
+
+  if(debug) {
+    cat("Predict for nodes", predicted_nodes, "completed", "\n")
+  }
+
+  if(!is.null(time_column) & !is.null(time_values)) {
+    print(time_values)
+    actual_length = length(time_values)
+    predicted_length = nrow(data_constructed)
+    new_time_values <- NULL
+    if(actual_length < predicted_length) {
+      new_time_values <- seq.Date(time_values[1], length = predicted_length, by = "day")
+      print(new_time_values)
+      time_values <- c(time_values, new_time_values)
+      data_constructed <- cbind(new_time_values, data_constructed)
+    } else {
+      data_constructed <- cbind(time_values, data_constructed)
+    }
+
+    colnames(data_constructed) <- c(time_column, continuous_variables, discrete_variables, predicted_nodes)
+  }
+  return(data_constructed)
 }
 
 

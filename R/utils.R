@@ -550,4 +550,15 @@ get_anomally_kpi <- function(kpi_score, threshold) {
   return(colnames(kpi_score)[which(-1 < kpi_values & kpi_values <= threshold)])
 }
 
+generate_variables <- function(variables, number_layers) {
+  total_variables <- c()
+
+  for(variable in variables) {
+    total_variables <- c(total_variables, paste(variable, 1:number_layers, sep = "_"))
+  }
+
+  return(total_variables)
+}
+
+
 

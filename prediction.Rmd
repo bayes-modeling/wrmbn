@@ -31,65 +31,25 @@ head(imputed_data)
 ## Predict with confident interval
 ```{r}
 library(wrmbn)
-generate_variables <- function(variables, number_layers) {
-  total_variables <- c()
-  
-  for(variable in variables) {
-    total_variables <- c(total_variables, paste(variable, 1:number_layers, sep = "_"))
-  }
-  
-  return(total_variables)
-}
-predict_data <- function(fitted, predictor_data, predicted_nodes, number_layers,
-                         continuous_variables, discrete_variables,
-                         time_column = NULL, normalizers = NULL, normalize_type = NULL,
-                         method = "lw", debug = FALSE) {
-  if(debug) {
-    cat("Predict for nodes", predicted_nodes, "\n")
-  }
-  predictor_data <- predictor_data[, c(time_column, continuous_variables, discrete_variables)]
 
-  all_variables <- names(fitted)
-  all_variables <- unique(gsub("*_[1-9]$", "", all_variables))
-  
-  left_variables <- setdiff(all_variables, c(predicted_nodes, continuous_variables, discrete_variables))
-  
-  #Bind predicted values
-  for(node in predicted_nodes) {
-    predictor_data <- cbind(predictor_data, rep(NA, nrow(predictor_data)))
-  }
-  
-  for(node in left_variables) {
-    predictor_data <- cbind(predictor_data, rep(NA, nrow(predictor_data)))
-  }
-  colnames(predictor_data) <- c(time_column, continuous_variables, discrete_variables, predicted_nodes, left_variables)
-  
-  #Predict values
-  #Generate variables with time notation
-  continuous_variables <- names(fitted)
-  discrete_variables <- c()
-  predicted_data <- wrmbn::impute_missing_data(fitted, predictor_data, continuous_variables, discrete_variables,
-                                time_column, normalize_type, normalizers, debug)
-  if(debug) {
-    cat("Predict for nodes", predicted_nodes, "completed", "\n")
-  }
-  return(predicted_data)
-}
-
-predictor_data <- data[1000:1001, c("date", "HCL", "QYT", "CND")]
+predictor_data <- data[2019:2020, c("date", "HND", "HCT")]
 print(predictor_data)
 normalizers <- preprocessed$normalizers
 normalize_type <- preprocessed$normalize_tye
 fitted <- trained_models$hc$fitted
-continuous_variables <- c("HCL", "QYT", "CND")
+continuous_variables <- c("HND", "HCT")
 discrete_variables <- c()
 predicted_nodes <- c("MBT")
 number_layers <- 3
 
-predicted_data <- predict_data(fitted, predictor_data, predicted_nodes, number_layers,
+predicted_data <- predict_data2(fitted, predictor_data, predicted_nodes, number_layers,
             continuous_variables, discrete_variables,
-            time_column = "date", normalizers = NULL, normalize_type = NULL,
-            method = "lw")
+            time_column = "date", "%m/%d/%y", normalizers, normalize_type,
+            method = "lw", TRUE)
+
+print(predicted_data)
+actual_data <- data[2019:2021, c("date", "HND", "HCT", "MBT")]
+print(actual_data)
 
 ```
 
