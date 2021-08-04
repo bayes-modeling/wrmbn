@@ -31,7 +31,7 @@ desire_layers <- 3
 normalize_type <- "mean_normalization"
 preprocessed <- preprocess_timeseries_data(data, type, time_column,
                                        continuous_variable_names, discrete_variable_names, desire_layers,
-                                       normalize_type, quantile_number = -1)
+                                       normalize_type, quantile_number = -1, na_omit = TRUE)
 ```
 ## Structure Filtering
 ```{r}
@@ -70,8 +70,6 @@ bl <- bl_wl$blacklist
 result <- wrmbn::cross_validation_learning_algorithms(data, algorithms, wl, bl, target, n_cluster = 4, debug = TRUE)
 #boxplot(result$gs, result$hc, result$tabu, result$iamb, result$inter.iamb, result$fast.iamb, names = algorithms)
 boxplot(result$hc, result$tabu, names = algorithms)
-
-dput(result, "result.R")
 ```
 
 
@@ -87,24 +85,6 @@ n_cluster <- 4
 #algorithms <- c("gs", "hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
 algorithms <- c("hc", "tabu")
 trained_models <- wrmbn::training_model(training_type, data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap = 500, debug = FALSE)
-
-dput(trained_models, "traind_models.R")
-```
-
-## Loading missing data
-```{r}
-library(wrmbn)
-data(data)
-continuous_variables <- preprocessed$continuous_variables
-discrete_variables <- preprocessed$discrete_variables
-desire_layers <- preprocessed$desire_layers
-time_column <- "date"
-normalize_type <- preprocessed$normalize_tye
-normalizers <- preprocessed$normalizers
-fitted <- trained_models$hc$fitted
-
-imputed_data <- impute_missing_data(fitted, data, continuous_variables, discrete_variables,
-                                time_column = "date", normalize_type, normalizers, debug = FALSE)
 ```
 
 

@@ -82,10 +82,11 @@ reconstruct_timeseries_data <- function(data, number_layers, na_omit = TRUE) {
     for(i in 1:(length(data[, 1]) - number_layers + 1)) {
       time_slices <- data[i:(i + number_layers - 1), ]
 
-
+      if(na_omit & sum(is.na(time_slices)) > 0) {
+        next
+      }
       row <- c()
       for(j in 1:nrow(time_slices)) {
-
         row <- c(row, as.character(time_slices[j, ]))
       }
 

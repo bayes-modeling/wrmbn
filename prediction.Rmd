@@ -28,7 +28,7 @@ imputed_data <- impute_missing_data(fitted, data, continuous_variables, discrete
 head(imputed_data)
 ```
 
-## Predict with confident interval
+## Predict data
 ```{r}
 library(wrmbn)
 
@@ -42,7 +42,7 @@ discrete_variables <- c()
 predicted_nodes <- c("MBT")
 number_layers <- 3
 
-predicted_data <- predict_data2(fitted, predictor_data, predicted_nodes, number_layers,
+predicted_data <- predict_data(fitted, predictor_data, predicted_nodes, number_layers,
             continuous_variables, discrete_variables,
             time_column = "date", "%m/%d/%y", normalizers, normalize_type,
             method = "lw", TRUE)

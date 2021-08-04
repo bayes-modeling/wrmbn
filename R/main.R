@@ -320,7 +320,7 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
 
   #Impute missing data
   impute_data <- bnlearn::impute(fitted, processed_data)
-  print(impute_data)
+
   #Re-scale data to actual
   impute_data <- reverse_normalized_data(impute_data, normalize_type, normalizers)
 
@@ -412,14 +412,12 @@ predict_data <- function(fitted, predictor_data, predicted_nodes, number_layers,
   }
 
   if(!is.null(time_column) & !is.null(time_values)) {
-    print(time_values)
+
     actual_length = length(time_values)
     predicted_length = nrow(data_constructed)
     new_time_values <- NULL
     if(actual_length < predicted_length) {
       new_time_values <- seq.Date(time_values[1], length = predicted_length, by = "day")
-      print(new_time_values)
-      time_values <- c(time_values, new_time_values)
       data_constructed <- cbind(new_time_values, data_constructed)
     } else {
       data_constructed <- cbind(time_values, data_constructed)
