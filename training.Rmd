@@ -91,4 +91,3 @@ trained_models <- wrmbn::training_model(training_type, data, number_layers, bl, 
 
 
 
-

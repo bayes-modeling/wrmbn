@@ -1,3 +1,43 @@
+#' Preprocess time series data prepare for learning bayesian network
+#'
+#' @param data A data frame, each row is a time value and observations
+#' @param type Bayesian network type, "discrete" or "continuous"
+#' @param time_column Column name of "data", which values is time stamp
+#' @param continuous_variable_names Column names of continuous variables
+#' @param discrete_variable_names Column names of discrete variables
+#' @param desire_layers Number layers of bayesian network, at least is 2
+#' @param normalize_type Normalization type for continuous variables, "mean_normalization", "min_max" or "standardisation"
+#' @param quantile_number Number of quantile level for type "discrete"
+#' @param na_omit If true, NA/NaN values will be omit after preprocess
+#' @return An object with pre-processsed data and preprocess parameters
+#' @examples
+#' library(wrmbn)
+#'
+#' data("data")
+#' data("structure")
+#'
+#' uncorelate_node <- c("MTL", "QMX", "HCL", "CMB", "CTL", "CDX", "CBT")
+#' for(node in uncorelate_node) {
+#'  data <- data[, -which(colnames(data) == node)]
+#' }
+#'
+#' for(node in uncorelate_node) {
+#'   if(length(which(structure$from == node)) > 0) {
+#'     structure <- structure[-which(structure$from == node), ]
+#'   } else if(length(which(structure$to == node)) > 0) {
+#'     structure <- structure[-which(structure$to == node), ]
+#'   }
+#' }
+
+#' type <- "continuous"
+#' time_column <- "date"
+#' continuous_variable_names <- setdiff(colnames(data), time_column)
+#' discrete_variable_names <- c()
+#' desire_layers <- 3
+#' normalize_type <- "mean_normalization"
+#' preprocessed <- preprocess_timeseries_data(data, type, time_column,
+#'                                            continuous_variable_names, discrete_variable_names, desire_layers,
+#'                                            normalize_type, quantile_number = -1, na_omit = TRUE)
 preprocess_timeseries_data <- function(data, type, time_column,
                                        continuous_variable_names, discrete_variable_names, desire_layers,
                                        normalize_type = NULL, quantile_number = -1, na_omit = TRUE) {
@@ -59,6 +99,29 @@ preprocess_timeseries_data <- function(data, type, time_column,
   return(result)
 }
 
+
+#' Preprocess time series data prepare for test learned bayesian network
+#'
+#' @param data A data frame, each row is a time value and observations
+#' @param continuous_variable_names Column names of continuous variables
+#' @param discrete_variable_names Column names of discrete variables
+#' @param desire_layers Number layers of bayesian network, at least is 2
+#' @param time_column Column name of "data", which values is time stamp, default is NULL
+#' @param normalize_type Normalization type for continuous variables, "mean_normalization", "min_max" or "standardisation", default is NULL
+#' @param normalizers Normalize parameters, default is NULL
+#' @return An list object, each element is processed data frame
+#' @examples
+#' library(wrmbn)
+#' data("preprocessed")
+#' head(data)
+#' continuous_variables <- preprocessed$continuous_variables
+#' discrete_variables <- preprocessed$discrete_variables
+#' desire_layers <- preprocessed$desire_layers
+#' time_column <- "date"
+#' normalize_type <- preprocessed$normalize_tye
+#' normalizers <- preprocessed$normalizers
+#' test_data <- preprocess_test_data(data, continuous_variables, discrete_variables, desire_layers,
+#'                                   time_column, normalize_type, normalizers)
 preprocess_test_data <- function(data, continuous_variables, discrete_variables, desire_layers,
                                  time_column = NULL, normalize_type = NULL, normalizers = NULL) {
   time_values <- NULL
@@ -108,7 +171,7 @@ preprocess_test_data <- function(data, continuous_variables, discrete_variables,
 #' custom_blacklist <- NULL
 #' custom_whitelist <- NULL
 
-#' bl_wl <- tfdbn::get_continuous_structure_filter(continuous_data, desire_layers, quantile_number, continuous_dynamic_variables,
+#' bl_wl <- get_continuous_structure_filter(continuous_data, desire_layers, quantile_number, continuous_dynamic_variables,
 #'                                                 continuous_static_variables, discrete_static_variables,
 #'                                                 known_structure, corr_threshold, is_blacklist_internal,
 #'                                                 is_variable_only, is_blacklist_other,
@@ -204,17 +267,17 @@ get_discrete_structure_filter <- function(discrete_data, desire_layers, quantile
 #' @param debug Debug mode
 #' @return An object list of trained model and training parameters
 #' @examples
-#' data("data_small")
+#' library(wrmbn)
 #' data("preprocessed")
-#' continuous_data <- preprocessed$data
-#' desire_layers <- preprocessed$desire_layers
+#' training_type <- preprocessed$type
+#' data <- preprocessed$data
+#' number_layers <- preprocessed$desire_layers
 #' bl <- bl_wl$blacklist
 #' wl <- bl_wl$whitelist
-#' n_cluster = 4
-#' algorithms <- c("tabu", "hc")
-#' number_bootstrap = 100
-
-#' trained <- training_model("continuous", continuous_data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap)
+#' n_cluster <- 4
+#' algorithms <- c("gs", "hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
+#' algorithms <- c("hc", "tabu")
+#' trained_models <- training_model(training_type, data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap = 500, debug = FALSE)
 training_model <- function(training_type, data, number_layers, bl, wl, n_cluster, algorithms, number_bootstrap = 100, debug = FALSE) {
   if(debug) {
     cat("Training model ", training_type, "\n")
@@ -263,6 +326,31 @@ training_model <- function(training_type, data, number_layers, bl, wl, n_cluster
   return(results)
 }
 
+#' Cross validation for learning bayesian network
+#'
+#' @param data Processed data frame for learning bayesian network
+#' @param algorithms Algorithms for cross validation
+#' @param wl Network white list
+#' @param bl Network black list
+#' @param target A character string, the label of target node for prediction
+#' @param k_fold The data are split in k subsets of equal size
+#' @param runs A positive integer number, the number of times k-fold or hold-out cross-validation will be run.
+#' @param loss A character string, the label of a loss function, detail see https://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
+#' @param n_cluster an optional cluster object from package parallel.
+#' @param debug Debug mode
+#' @return Cross validation result for each algorithm
+#' @example
+#' library(wrmbn)
+#' data("preprocessed")
+#' data <- preprocessed$data
+#' algorithms <- c("gs", "hc", "tabu", "iamb", "inter.iamb", "fast.iamb")
+#' algorithms <- c("hc", "tabu")
+#' target <- "MBT_3"
+#' wl <- bl_wl$whitelist
+#' bl <- bl_wl$blacklist
+
+#' result <- wrmbn::cross_validation_learning_algorithms(data, algorithms, wl, bl, target, n_cluster = 4, debug = TRUE)
+#' boxplot(result$hc, result$tabu, names = algorithms)
 cross_validation_learning_algorithms <- function(data, algorithms, wl, bl, target,
                                                  k_fold = 5, runs = 10, loss = "mse",
                                                  n_cluster = NULL, debug = NULL) {
@@ -304,7 +392,33 @@ cross_validation_learning_algorithms <- function(data, algorithms, wl, bl, targe
   return(result)
 }
 
-
+#' Impute missing data in data frame
+#'
+#' @param fitted A fitted model
+#' @param data A data frame, contains missing data, each row is a time value and observations, structure is the same as learning data before process
+#' @param continuous_variables Column names of continuous variables
+#' @param discrete_variables Column names of discrete variables
+#' @param time_column Column name of "data", which values is time stamp, default is NULL
+#' @param normalize_type Normalization type for continuous variables, "mean_normalization", "min_max" or "standardisation", default is NULL
+#' @param normalizers Normalize parameters, default is NULL
+#' @return A full filled data frame
+#' @examples
+#' library(wrmbn)
+#' data("data")
+#' data("preprocessed")
+#' data("trained_models")
+#' head(data)
+#' continuous_variables <- preprocessed$continuous_variables
+#' discrete_variables <- preprocessed$discrete_variables
+#' desire_layers <- preprocessed$desire_layers
+#' time_column <- "date"
+#' normalize_type <- preprocessed$normalize_tye
+#' normalizers <- preprocessed$normalizers
+#' fitted <- trained_models$hc$fitted
+#'
+#' imputed_data <- impute_missing_data(fitted, data, continuous_variables, discrete_variables,
+#'                                     time_column, normalize_type, normalizers, debug = FALSE)
+#' head(imputed_data)
 impute_missing_data <- function(fitted, data, continuous_variables, discrete_variables,
                                 time_column = NULL, normalize_type = NULL, normalizers = NULL, debug = FALSE) {
   if(debug) {
@@ -342,6 +456,42 @@ impute_missing_data <- function(fitted, data, continuous_variables, discrete_var
   return(impute_data)
 }
 
+#' Predict data
+#'
+#' @param fitted A fitted model
+#' @param predictor_data A data frame, each row is evidence
+#' @param predicted_nodes List of variables need to predict
+#' @param number_layers Number layers of fitted model
+#' @param continuous_variables Column names of continuous variables
+#' @param discrete_variables Column names of discrete variables
+#' @param time_column Column name of "data", which values is time stamp, default is NULL
+#' @param time_format Time format of time column, default is %m/%d/%y
+#' @param normalize_type Normalization type for continuous variables, "mean_normalization", "min_max" or "standardisation", default is NULL
+#' @param normalizers Normalize parameters, default is NULL
+#' @return A data frame with evidence and predicted variables
+#' @examples
+#' library(wrmbn)
+#' data("data")
+#' data("preprocessed")
+#' data("trained_models")
+#' predictor_data <- data[2019:2020, c("date", "HND", "HCT")]
+#' print(predictor_data)
+#' normalizers <- preprocessed$normalizers
+#' normalize_type <- preprocessed$normalize_tye
+#' fitted <- trained_models$hc$fitted
+#' continuous_variables <- c("HND", "HCT")
+#' discrete_variables <- c()
+#' predicted_nodes <- c("MBT")
+#' number_layers <- 3
+#'
+#' predicted_data <- predict_data(fitted, predictor_data, predicted_nodes, number_layers,
+#'                                continuous_variables, discrete_variables,
+#'                                time_column = "date", "%m/%d/%y", normalizers, normalize_type,
+#'                                method = "lw", TRUE)
+#'
+#' print(predicted_data)
+#' actual_data <- data[2019:2021, c("date", "HND", "HCT", "MBT")]
+#' print(actual_data)
 predict_data <- function(fitted, predictor_data, predicted_nodes, number_layers,
                          continuous_variables, discrete_variables,
                          time_column = NULL, time_format = "%m/%d/%y", normalizers = NULL, normalize_type = NULL,
